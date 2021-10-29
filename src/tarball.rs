@@ -14,7 +14,7 @@ pub fn dir<W>(
 where
     W: Write,
 {
-    let mut archive = Builder::new(GzEncoder::new(buf, Compression::best()));
+    let mut archive = Builder::new(buf);
     fn bundle<F>(
         dir: &Path,
         f: &mut F,
