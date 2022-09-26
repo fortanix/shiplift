@@ -15,6 +15,7 @@ use crate::{docker::Docker, errors::Result, tarball, transport::tar};
 use crate::datetime::datetime_from_unix_timestamp;
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, Utc};
+use crate::Error;
 
 /// Interface for accessing and manipulating a named docker image
 ///
@@ -212,7 +213,13 @@ impl<'docker> Images<'docker> {
             .auth_header()
             .map(|a| iter::once(("X-Registry-Auth", a)));
 
-        let _ = self.docker.post_with_headers(&path.join("?"), None, headers).await?;
+        let res = self.docker.post_with_headers(&path.join("?"), None, headers).await?;
+        let lines = res.split("\r\n");
+        for line in lines {
+            if line.contains("errorDetail") {
+                return Err(Error::InvalidResponse(line.to_string()))
+            }
+        }
         Ok(())
     }
     
