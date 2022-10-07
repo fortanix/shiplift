@@ -14,7 +14,17 @@ pub fn dir<W>(
 where
     W: Write,
 {
-    let mut archive = Builder::new(GzEncoder::new(buf, Compression::best()));
+    let skip_gzip = true;
+    let mut buf_archive;
+    let mut gzip_archive;
+    let archive: &mut Box<dyn Write> = if skip_gzip == true {
+        buf_archive = Builder::new(buf);
+        &mut buf_archive
+    } else {
+        gzip_archive = Builder::new(GzEncoder::new(buf, Compression::best()));
+        &mut gzip_archive
+    };
+    //let mut archive = Builder::new(buf);
     fn bundle<F>(
         dir: &Path,
         f: &mut F,
@@ -38,7 +48,6 @@ where
         }
         Ok(())
     }
-
     {
         let base_path = Path::new(path).canonicalize()?;
         // todo: don't unwrap
