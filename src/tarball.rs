@@ -6,48 +6,37 @@ use std::{
 };
 use tar::Builder;
 
-// todo: this is pretty involved. (re)factor this into its own crate
-pub fn dir<W>(
-    buf: W,
-    path: &str,
+fn bundle<F>(
+    dir: &Path,
+    f: &mut F,
+    bundle_dir: bool,
 ) -> io::Result<()>
-where
-    W: Write,
-{
-    let skip_gzip = true;
-    let mut buf_archive;
-    let mut gzip_archive;
-    let archive: &mut Box<dyn Write> = if skip_gzip == true {
-        buf_archive = Builder::new(buf);
-        &mut buf_archive
-    } else {
-        gzip_archive = Builder::new(GzEncoder::new(buf, Compression::best()));
-        &mut gzip_archive
-    };
-    //let mut archive = Builder::new(buf);
-    fn bundle<F>(
-        dir: &Path,
-        f: &mut F,
-        bundle_dir: bool,
-    ) -> io::Result<()>
     where
         F: FnMut(&Path) -> io::Result<()>,
-    {
-        if fs::metadata(dir)?.is_dir() {
-            if bundle_dir {
-                f(&dir)?;
-            }
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                if fs::metadata(entry.path())?.is_dir() {
-                    bundle(&entry.path(), f, true)?;
-                } else {
-                    f(&entry.path().as_path())?;
-                }
+{
+    if fs::metadata(dir)?.is_dir() {
+        if bundle_dir {
+            f(&dir)?;
+        }
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            if fs::metadata(entry.path())?.is_dir() {
+                bundle(&entry.path(), f, true)?;
+            } else {
+                f(&entry.path().as_path())?;
             }
         }
-        Ok(())
     }
+    Ok(())
+}
+
+fn use_archive<W>(
+    mut archive: Builder<W>,
+    path: &str,
+) -> io::Result<()>
+    where
+        W: Write,
+{
     {
         let base_path = Path::new(path).canonicalize()?;
         // todo: don't unwrap
@@ -74,7 +63,22 @@ where
         };
         bundle(Path::new(path), &mut append, false)?;
     }
-    archive.finish()?;
+    archive.finish()
+}
+// todo: this is pretty involved. (re)factor this into its own crate
+pub fn dir<W>(
+    buf: W,
+    path: &str,
+    skip_gzip: bool,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    if skip_gzip == true {
+        use_archive(Builder::new(buf), path)?;
+    } else {
+        use_archive(Builder::new(GzEncoder::new(buf, Compression::best())), path)?;
+    };
 
     Ok(())
 }

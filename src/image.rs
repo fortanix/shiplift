@@ -121,7 +121,7 @@ impl<'docker> Images<'docker> {
         // stream. But for backwards compatability, we have to return the error inside of the
         // stream.
         let mut bytes = Vec::default();
-        let tar_result = tarball::dir(&mut bytes, opts.path.as_str());
+        let tar_result = tarball::dir(&mut bytes, opts.path.as_str(), opts.skip_gzip);
 
         // We must take ownership of the Docker reference. If we don't then the lifetime of 'stream
         // is incorrectly tied to `self`.
@@ -557,6 +557,10 @@ impl PullOptionsBuilder {
 pub struct BuildOptions {
     pub path: String,
     params: HashMap<&'static str, String>,
+    // Custom parameter to avoid creating a tar object of the docker
+    // image when you do an image build. Instead work with a normal
+    // archive buffer.
+    skip_gzip: bool,
 }
 
 impl BuildOptions {
@@ -588,6 +592,7 @@ impl BuildOptions {
 pub struct BuildOptionsBuilder {
     path: String,
     params: HashMap<&'static str, String>,
+    skip_gzip: bool,
 }
 
 impl BuildOptionsBuilder {
@@ -691,6 +696,14 @@ impl BuildOptionsBuilder {
         self
     }
 
+    pub fn set_skip_gzip(
+        &mut self,
+        skip_gzip: bool,
+    ) -> &mut Self {
+        self.skip_gzip = skip_gzip;
+        self
+    }
+
     // todo: memswap
     // todo: cpusetcpus
     // todo: cpuperiod
@@ -701,6 +714,7 @@ impl BuildOptionsBuilder {
         BuildOptions {
             path: self.path.clone(),
             params: self.params.clone(),
+            skip_gzip: self.skip_gzip,
         }
     }
 }
