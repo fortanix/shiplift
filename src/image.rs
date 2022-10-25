@@ -13,9 +13,9 @@ use crate::{docker::Docker, errors::Result, tarball, transport::tar};
 
 #[cfg(feature = "chrono")]
 use crate::datetime::datetime_from_unix_timestamp;
+use crate::Error;
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, Utc};
-use crate::Error;
 
 /// Interface for accessing and manipulating a named docker image
 ///
@@ -981,6 +981,26 @@ pub enum ImageBuildChunk {
         #[serde(rename = "progressDetail")]
         progress_detail: Option<ProgressDetail>,
     },
+}
+
+impl ImageBuildChunk {
+    /// Return the total image size during download (if available).
+    pub fn total_image_bytes(&self) -> Option<u64> {
+        match self {
+            ImageBuildChunk::PullStatus {
+                status: _,
+                id: _,
+                progress: _,
+                progress_detail,
+            } => {
+                if let Some(detail) = progress_detail {
+                    return detail.total;
+                }
+            }
+            _ => (),
+        }
+        None
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
