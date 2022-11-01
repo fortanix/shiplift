@@ -984,7 +984,8 @@ pub enum ImageBuildChunk {
 }
 
 impl ImageBuildChunk {
-    /// Return the total image size during download (if available).
+    /// Return the eventual compressed image layer size during download (if
+    /// available).
     pub fn total_image_bytes(&self) -> Option<u64> {
         match self {
             ImageBuildChunk::PullStatus {
@@ -1000,6 +1001,29 @@ impl ImageBuildChunk {
             _ => (),
         }
         None
+    }
+
+    /// Returns the image layer ID and size during download.
+    ///
+    /// If both the layer ID and eventual (compressed) layer size are available
+    /// from the ImageBuildChunk, they will be returned as `Some((layer_id,
+    /// layer_size))`. Otherwise, `None` is returned.
+    pub fn image_layer_bytes(&self) -> Option<(String, u64)> {
+        match self {
+            ImageBuildChunk::PullStatus {
+                status: _,
+                id: Some(id),
+                progress: _,
+                progress_detail:
+                    Some(ProgressDetail {
+                        current: _,
+                        total: Some(total),
+                    }),
+            } => {
+                Some((id.to_string(), *total))
+            }
+            _ => None,
+        }
     }
 }
 
