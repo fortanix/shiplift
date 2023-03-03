@@ -29,7 +29,7 @@ pub mod network;
 pub mod service;
 pub mod volume;
 
-mod tarball;
+pub mod tarball;
 
 #[cfg(feature = "chrono")]
 mod datetime;

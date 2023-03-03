@@ -16,6 +16,7 @@ use crate::datetime::datetime_from_unix_timestamp;
 use crate::Error;
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, Utc};
+use bytes::Bytes;
 
 /// Interface for accessing and manipulating a named docker image
 ///
@@ -140,6 +141,32 @@ impl<'docker> Images<'docker> {
                 Ok(value_stream)
             }
             .try_flatten_stream(),
+        )
+    }
+
+    pub fn build_from_raw_parts<T>(
+        &self,
+        opts: &BuildParams,
+        build_context: impl Iterator<Item = Result<T>> + Send + 'static,
+    )-> impl Stream<Item = Result<ImageBuildChunk>> + Unpin + 'docker where T : Into<Bytes> + 'static {
+        let mut endpoint = vec!["/build".to_owned()];
+        if let Some(query) = opts.serialize() {
+            endpoint.push(query)
+        }
+
+        let request_stream = futures_util::stream::iter(build_context);
+        let docker = self.docker;
+
+        Box::pin(
+            async move {
+                let value_stream = docker.stream_post_into(
+                    endpoint.join("?"),
+                    Some((Body::wrap_stream(request_stream), tar())),
+                    None::<iter::Empty<_>>,
+                );
+
+                Ok(value_stream)
+            }.try_flatten_stream(),
         )
     }
 
@@ -555,7 +582,8 @@ impl PullOptionsBuilder {
 
 #[derive(Default, Debug)]
 pub struct BuildOptions {
-    pub path: String,
+    path: String,
+
     params: HashMap<&'static str, String>,
     // Custom parameter to avoid creating a tar object of the docker
     // image when you do an image build. Instead work with a normal
@@ -591,7 +619,9 @@ impl BuildOptions {
 #[derive(Default)]
 pub struct BuildOptionsBuilder {
     path: String,
-    params: HashMap<&'static str, String>,
+
+    build_params: BuildParams,
+
     skip_gzip: bool,
 }
 
@@ -599,8 +629,8 @@ impl BuildOptionsBuilder {
     /// path is expected to be a file path to a directory containing a Dockerfile
     /// describing how to build a Docker image
     pub(crate) fn new<S>(path: S) -> Self
-    where
-        S: Into<String>,
+        where
+            S: Into<String>,
     {
         BuildOptionsBuilder {
             path: path.into(),
@@ -608,6 +638,113 @@ impl BuildOptionsBuilder {
         }
     }
 
+    pub fn set_skip_gzip(
+        &mut self,
+        skip_gzip: bool,
+    ) -> &mut Self {
+        self.skip_gzip = skip_gzip;
+        self
+    }
+
+    pub fn dockerfile<P>(
+        &mut self,
+        path: P,
+    ) -> &mut Self
+        where
+            P: Into<String>,
+    {
+        self.build_params.dockerfile(path);
+        self
+    }
+
+    pub fn tag<T>(
+        &mut self,
+        t: T,
+    ) -> &mut Self
+        where
+            T: Into<String>,
+    {
+        self.build_params.tag(t);
+        self
+    }
+
+    pub fn remote<R>(
+        &mut self,
+        r: R,
+    ) -> &mut Self
+        where
+            R: Into<String>,
+    {
+        self.build_params.remote(r);
+        self
+    }
+
+    pub fn nocache(
+        &mut self,
+        nc: bool,
+    ) -> &mut Self {
+        self.build_params.nocache(nc);
+        self
+    }
+
+    pub fn rm(
+        &mut self,
+        r: bool,
+    ) -> &mut Self {
+        self.build_params.rm(r);
+        self
+    }
+
+    pub fn forcerm(
+        &mut self,
+        fr: bool,
+    ) -> &mut Self {
+        self.build_params.forcerm(fr);
+        self
+    }
+
+    pub fn network_mode<T>(
+        &mut self,
+        t: T,
+    ) -> &mut Self
+        where
+            T: Into<String>,
+    {
+        self.build_params.network_mode(t);
+        self
+    }
+
+    pub fn memory(
+        &mut self,
+        memory: u64,
+    ) -> &mut Self {
+        self.build_params.memory(memory);
+        self
+    }
+
+    pub fn cpu_shares(
+        &mut self,
+        cpu_shares: u32,
+    ) -> &mut Self {
+        self.build_params.cpu_shares(cpu_shares);
+        self
+    }
+
+    pub fn build(&self) -> BuildOptions {
+        BuildOptions {
+            path: self.path.clone(),
+            params: self.build_params.params.clone(),
+            skip_gzip: self.skip_gzip
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct BuildParams {
+    params: HashMap<&'static str, String>,
+}
+
+impl BuildParams {
     /// set the name of the docker file. defaults to "DockerFile"
     pub fn dockerfile<P>(
         &mut self,
@@ -696,25 +833,22 @@ impl BuildOptionsBuilder {
         self
     }
 
-    pub fn set_skip_gzip(
-        &mut self,
-        skip_gzip: bool,
-    ) -> &mut Self {
-        self.skip_gzip = skip_gzip;
-        self
-    }
-
     // todo: memswap
     // todo: cpusetcpus
     // todo: cpuperiod
     // todo: cpuquota
     // todo: buildargs
 
-    pub fn build(&self) -> BuildOptions {
-        BuildOptions {
-            path: self.path.clone(),
-            params: self.params.clone(),
-            skip_gzip: self.skip_gzip,
+    /// serialize options as a string. returns None if no options are defined
+    pub fn serialize(&self) -> Option<String> {
+        if self.params.is_empty() {
+            None
+        } else {
+            Some(
+                form_urlencoded::Serializer::new(String::new())
+                    .extend_pairs(&self.params)
+                    .finish(),
+            )
         }
     }
 }
