@@ -106,7 +106,7 @@ impl<'docker> Images<'docker> {
         Images { docker }
     }
 
-    /// Builds a new image build by reading a Dockerfile in a target directory
+    /// Builds a new image by reading a Dockerfile in a target directory
     ///
     /// [Api Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImageBuild)
     pub fn build(
@@ -144,6 +144,11 @@ impl<'docker> Images<'docker> {
         )
     }
 
+    /// Builds a new image by reading a build context
+    /// # Arguments
+    /// opts - options for [Api Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImageBuild)
+    /// build_context - an iterator over bytes of build context archive. Format of the build context
+    /// should be equivalent to that of the original `ImageBuild` function in [Api Reference].
     pub fn build_from_raw_parts<T>(
         &self,
         opts: &BuildParams,
@@ -739,6 +744,7 @@ impl BuildOptionsBuilder {
     }
 }
 
+/// Describes arguments for [Api Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImageBuild)
 #[derive(Default)]
 pub struct BuildParams {
     params: HashMap<&'static str, String>,
