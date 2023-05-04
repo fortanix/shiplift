@@ -62,9 +62,15 @@ impl<'docker> Image<'docker> {
     /// Deletes an image
     ///
     /// [Api Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImagePrune)
-    pub async fn delete(&self) -> Result<Vec<Status>> {
+    pub async fn delete(&self, delete_options: &DeleteOptions) -> Result<Vec<Status>> {
+        let mut path = vec![format!("/images/{}", self.name)];
+
+        if let Some(query) = delete_options.serialize() {
+            path.push(query)
+        }
+
         self.docker
-            .delete_json::<Vec<Status>>(&format!("/images/{}", self.name)[..])
+            .delete_json::<Vec<Status>>(&path.join("?"))
             .await
     }
 
@@ -298,6 +304,22 @@ impl<'docker> Images<'docker> {
             }
             .try_flatten_stream(),
         )
+    }
+
+    /// Deletes unused images
+    ///
+    /// [Api Reference](https://docs.docker.com/engine/api/v1.42/#tag/Image/operation/ImagePrune)
+    pub async fn prune(
+        &self,
+        opts: &PruneOptions,
+    ) -> Result<String> {
+        let mut path = vec!["/images/prune".to_string()];
+
+        if let Ok(Some(query)) = opts.serialize() {
+            path.push(query)
+        }
+
+        self.docker.post(&path.join("?"), None).await
     }
 }
 
@@ -1182,6 +1204,87 @@ pub struct ErrorDetail {
 pub struct ProgressDetail {
     current: Option<u64>,
     total: Option<u64>,
+}
+
+/// Describes query parameters for DELETE /images/{name}
+/// https://docs.docker.com/engine/api/v1.42/#tag/Image/operation/ImageDelete
+#[derive(Default, Debug)]
+pub struct DeleteOptions {
+
+    params: HashMap<&'static str, String>,
+}
+
+impl DeleteOptions {
+    /// Remove the image even if it is being used by stopped containers or has other tags
+    pub fn force(mut self) -> Self {
+        self.params.insert("force", true.to_string());
+        self
+    }
+
+    /// Do not delete untagged parent images
+    pub fn no_prune(mut self) -> Self {
+        self.params.insert("noprune", true.to_string());
+        self
+    }
+
+    /// serialize options as a string. returns None if no options are defined
+    pub fn serialize(&self) -> Option<String> {
+        if self.params.is_empty() {
+            None
+        } else {
+            Some(
+                form_urlencoded::Serializer::new(String::new())
+                    .extend_pairs(&self.params)
+                    .finish(),
+            )
+        }
+    }
+}
+
+/// Describes query parameters for POST /images/prune
+/// https://docs.docker.com/engine/api/v1.42/#tag/Image/operation/ImagePrune
+#[derive(Default, Debug)]
+pub struct PruneOptions {
+
+    params: HashMap<&'static str, Vec<String>>,
+}
+
+impl PruneOptions {
+
+    /// dangling=<boolean> When set to true (or 1), prune only unused and untagged images.
+    /// When set to false (or 0), all unused images are pruned.
+    pub fn set_dangling(mut self, dangling: bool) -> Self {
+        self.params.insert("dangling", vec![dangling.to_string()]);
+        self
+    }
+
+    /// until=<string> Prune images created before this timestamp.
+    /// The <timestamp> can be Unix timestamps, date formatted timestamps, or Go duration strings (e.g. 10m, 1h30m) computed relative to the daemon machine’s time.
+    pub fn set_until(mut self, until: String) -> Self {
+        self.params.insert("until", vec![until]);
+        self
+    }
+
+    /// label (label=<key>, label=<key>=<value>, label!=<key>, or label!=<key>=<value>) Prune images with (or without, in case label!=... is used) the specified labels.
+    pub fn set_label(mut self, label: String) -> Self {
+        self.params.insert("label", vec![label]);
+        self
+    }
+
+    /// serialize options as a string. returns None if no options are defined
+    pub fn serialize(&self) -> Result<Option<String>> {
+        if self.params.is_empty() {
+            Ok(None)
+        } else {
+            let value = serde_json::to_string(&self.params).map_err(Error::from)?;
+
+            Ok(Some(
+                form_urlencoded::Serializer::new(String::new())
+                    .append_pair("filters", &value)
+                    .finish(),
+            ))
+        }
+    }
 }
 
 #[cfg(test)]
