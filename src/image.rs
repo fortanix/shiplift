@@ -1052,7 +1052,7 @@ pub struct ImageInfo {
     pub labels: Option<HashMap<String, String>>,
     pub repo_tags: Option<Vec<String>>,
     pub repo_digests: Option<Vec<String>>,
-    pub virtual_size: u64,
+    pub virtual_size: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1073,7 +1073,7 @@ pub struct ImageDetails {
     pub repo_tags: Option<Vec<String>>,
     pub repo_digests: Option<Vec<String>>,
     pub size: u64,
-    pub virtual_size: u64,
+    pub virtual_size: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
