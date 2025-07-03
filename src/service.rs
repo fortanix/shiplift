@@ -306,6 +306,8 @@ impl ServiceOptionsBuilder {
         self
     }
 
+    /*
+    /// Deprecated in v1.44
     pub fn networks<I>(
         &mut self,
         networks: I,
@@ -323,6 +325,7 @@ impl ServiceOptionsBuilder {
         );
         self
     }
+    */
 
     pub fn endpoint_spec(
         &mut self,
