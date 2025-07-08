@@ -941,6 +941,9 @@ impl ImageListOptionsBuilder {
         self
     }
 
+    /*
+    /// Deprecated in v1.13
+    /// Removed in v1.41
     pub fn filter_name(
         &mut self,
         name: &str,
@@ -948,6 +951,7 @@ impl ImageListOptionsBuilder {
         self.params.insert("filter", name.to_owned());
         self
     }
+    */
 
     pub fn filter(
         &mut self,
@@ -1034,7 +1038,7 @@ impl PushOptionsBuilder {
 pub struct SearchResult {
     pub description: String,
     pub is_official: bool,
-    pub is_automated: bool,
+    pub is_automated: Option<bool>,
     pub name: String,
     pub star_count: u64,
 }
@@ -1079,23 +1083,21 @@ pub struct ImageDetails {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ContainerConfig {
-    pub attach_stderr: bool,
-    pub attach_stdin: bool,
-    pub attach_stdout: bool,
+    pub attach_stderr: Option<bool>,
+    pub attach_stdin: Option<bool>,
+    pub attach_stdout: Option<bool>,
     pub cmd: Option<Vec<String>>,
-    pub domainname: String,
+    pub domainname: Option<String>,
     pub entrypoint: Option<Vec<String>>,
     pub env: Option<Vec<String>>,
     pub exposed_ports: Option<HashMap<String, HashMap<String, String>>>,
-    pub hostname: String,
-    pub image: String,
+    pub hostname: Option<String>,
+    pub image: Option<String>,
     pub labels: Option<HashMap<String, String>>,
-    // pub MacAddress: String,
     pub on_build: Option<Vec<String>>,
-    // pub NetworkDisabled: bool,
-    pub open_stdin: bool,
-    pub stdin_once: bool,
-    pub tty: bool,
+    pub open_stdin: Option<bool>,
+    pub stdin_once: Option<bool>,
+    pub tty: Option<bool>,
     pub user: String,
     pub working_dir: String,
 }
@@ -1139,7 +1141,7 @@ pub enum ImageBuildChunk {
         stream: String,
     },
     Error {
-        error: String,
+        error: Option<String>,
         #[serde(rename = "errorDetail")]
         error_detail: ErrorDetail,
     },
