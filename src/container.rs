@@ -1292,7 +1292,7 @@ pub struct HostConfig {
     pub device_cgroup_rules: Option<String>,
     pub device_requests: Option<Vec<DeviceRequest>>,
     #[serde(rename = "KernelMemoryTCP")]
-    pub kernel_memory_tcp: i64,
+    pub kernel_memory_tcp: Option<i64>,
     pub memory_reservation: Option<i64>,
     pub memory_swap: Option<i64>,
     pub memory_swappiness: Option<i64>,
