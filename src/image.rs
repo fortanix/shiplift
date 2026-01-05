@@ -1063,17 +1063,17 @@ pub struct ImageInfo {
 #[serde(rename_all = "PascalCase")]
 pub struct ImageDetails {
     pub architecture: String,
-    pub author: String,
-    pub comment: String,
+    pub author: Option<String>,
+    pub comment: Option<String>,
     pub config: ContainerConfig,
     #[cfg(feature = "chrono")]
     pub created: DateTime<Utc>,
     #[cfg(not(feature = "chrono"))]
     pub created: String,
-    pub docker_version: String,
+    pub docker_version: Option<String>,
     pub id: String,
     pub os: String,
-    pub parent: String,
+    pub parent: Option<String>,
     pub repo_tags: Option<Vec<String>>,
     pub repo_digests: Option<Vec<String>>,
     pub size: u64,
@@ -1098,8 +1098,8 @@ pub struct ContainerConfig {
     pub open_stdin: Option<bool>,
     pub stdin_once: Option<bool>,
     pub tty: Option<bool>,
-    pub user: String,
-    pub working_dir: String,
+    pub user: Option<String>,
+    pub working_dir: Option<String>,
 }
 
 impl ContainerConfig {

@@ -319,13 +319,13 @@ type PortDescription = HashMap<String, Option<Vec<HashMap<String, String>>>>;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct NetworkSettings {
-    pub bridge: String,
-    pub gateway: String,
+    pub bridge: Option<String>,
+    pub gateway: Option<String>,
     #[serde(rename = "IPAddress")]
-    pub ip_address: String,
+    pub ip_address: Option<String>,
     #[serde(rename = "IPPrefixLen")]
-    pub ip_prefix_len: u64,
-    pub mac_address: String,
+    pub ip_prefix_len: Option<u64>,
+    pub mac_address: Option<String>,
     pub ports: Option<PortDescription>,
     pub networks: HashMap<String, NetworkEntry>,
 }
